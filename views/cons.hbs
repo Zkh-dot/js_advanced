@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Список контактов</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="/css/con.css">
+</head>
+<body>
+    <h1>Список контактов</h1>
+    <div id="main">
+{{#each this}}
+        <a href="/conts/{{this.id}}">{{this.name}}</a>
+{{/each}}
+    </div>
+</body>
+<html>
