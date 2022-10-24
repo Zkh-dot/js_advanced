@@ -9,8 +9,15 @@
     <h1>Список контактов</h1>
     <div id="main">
 {{#each this}}
-        <a href="/conts/{{this.id}}">{{this.name}}</a>
+    <div>
+        
+        <p><a href="/conts/{{this.id}}">{{this.username}}</a> {{this.status}}</p>
+    </div>
 {{/each}}
     </div>
+    <form action="/addfriend" method="post">
+        <input type="text" name="findid" placeholder="user's id" id="userid" required="">
+        <input type="submit" value="find">
+    </form>
 </body>
 <html>
