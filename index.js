@@ -1,4 +1,4 @@
-//тут будет код
+//тут есть  код
 
 const express = require("express");
 const session = require('express-session');
@@ -18,49 +18,8 @@ const client = new Pool({
 
 client.connect()
 var usernames = []
-var passwords = []
-// callback
-async function refresh(){
-  client.query('SELECT username FROM users', (err, res) => {
-    if (err) {
-      console.log(err.stack)
-    } else {
-      usernames = res.rows;
-      console.log(usernames)
-    }
 
-  })
-
-  client.query('SELECT password FROM users', (err, res) => {
-    if (err) {
-      console.log(err.stack)
-    } else {
-      passwords = res.rows;
-      console.log(passwords)
-    }
-  })
-}
-
-const conts = {
-    1: {
-      "name": "freakadelka",
-      "status": "online",
-      "prof_photo": "2.jpg",
-      "width": "200px"
-    },
-    2: {
-      "name": "Lesha",
-      "status": "offline",
-      "prof_photo": "1.jpg",
-      "width": "200px"
-    },
-    3: {
-      "name": "Масло",
-      "status": "freak",
-      "prof_photo": "3.jpg",
-      "width": "1000px"
-    }
-};
+var message = "";
 
 const app = express();
 app.set("view engine", "hbs");
@@ -76,45 +35,43 @@ app.use(session({
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
-app.use("//", function(request, response) {
-  client.query(`SELECT sender, reciver from active_requests  WHERE reciver = '${request.session.userid}'`), function(error, results, fields) {
-    console.log(results.rows)
-    
-  }
+app.use("//", async function(request, response) {
+ 
   if(request.session.loggedin){
-    console.log(`select id, username, status from friendlist join users on users.id = friendlist.friend_2 where friendlist.friend_1 = '${request.session.userid}' `)
-    client.query(`select id, username, status from friendlist join users on users.id = friendlist.friend_2 where friendlist.friend_1 = '${request.session.userid}' `, function(error, results, fields) {
-      console.log(results.rows)
-    
-      response.render("cons.hbs", results.rows);
-    });
+    data_friends_promis = client.query(`select id, username, status, photo, width from friendlist join users on users.id = friendlist.friend_2 where friendlist.friend_1 = '${request.session.userid}' `);
+    data_req_promis = client.query(`SELECT sender, reciver from active_requests  WHERE reciver = '${request.session.userid}'`);
+    console.log(`select id, username, status, photo, width from friendlist join users on users.id = friendlist.friend_2 where friendlist.friend_1 = '${request.session.userid}' `)
+    let data_friends = await data_friends_promis;
+    let data_req = await data_req_promis; 
+    request.session.friends = data_friends.rows;
+    console.log("data_friends.rows =", data_friends);  
+    content = {'data_fr': data_friends.rows, 'f_req': data_req.rows, 'message': message}
+    console.log("content  = ", content)
+    response.render("cons.hbs", content);
   }
-  else
+  else{
     response.sendFile(path.join(__dirname + '/views/login.html'));
-});
+  }
+}); 
+ 
+  
 
 app.post('/auth', function(request, response) {
 
-
+ 
     let username = request.body.username;
     let password = request.body.password;
-    console.log(username, password)
-    console.log(usernames, passwords)
     if (username && password) {
-        // If the account exists
-        console.log(`SELECT * FROM users WHERE username = '${username}' AND password = '${password}'`); 
         client.query(`SELECT * FROM users WHERE username = '${username}' AND password = '${password}'`, function(error, results, fields) {
          
-          console.log(results)
           // If there is an issue with the query, output the erro
           if (error) console.log( error );
           // If the account exists
           if (results.rowCount > 0) {
             request.session.loggedin = true;
             request.session.username = username;
-            console.log('---->id =', results.rows[0].id)
             request.session.userid = results.rows[0].id
-            console.log(request.session.username)
+            
             response.redirect('http://scv.forshielders.ru/');
         } else {
           //alert('Incorrect Username and/or Password!');
@@ -128,17 +85,11 @@ app.post('/auth', function(request, response) {
 app.post('/find', function(request, response) {
   let findid = request.body.findid;
   if (findid) {
-      // If the account exists
-      console.log(`INCERT INTO "active_requests" VALUES ('${request.session.userid}', '${findid}')'`); 
-      client.query(`INCERT INTO "active_requests" VALUES ('${request.session.userid}', '${findid}')'`, function(error, results, fields) {
+
+      client.query(`INCERT INTO active_requests VALUES ('${request.session.userid}', '${findid}')'`, function(error, results, fields) {
        
-        console.log(results)
-        if (error) console.log( error );
-        // If the account exists
-        if (results.rowCount > 0) {
-          response.redirect('http://scv.forshielders.ru/');
-      } else {
-        //alert('Incorrect Username and/or Password!');
+        if (error) console.log( error )
+        else { 
         response.redirect('http://scv.forshielders.ru/');
       }			
       response.end();
@@ -152,8 +103,7 @@ app.post('/reg', function(request, response) {
 
       let username = request.body.username;
       let password = request.body.password;
-      console.log(username, password)
-      console.log(usernames, passwords)
+
     try{ 
     if (username && password) {
       
@@ -163,12 +113,11 @@ app.post('/reg', function(request, response) {
 
           response.redirect('http://scv.forshielders.ru/');
         } else {
-          console.log(`INSERT INTO "users" (username, password, status) VALUES (${username},  ${password}, true)`)
+
           client.query(`INSERT INTO "users" (username, password, status) VALUES ('${username}',  '${password}', true)`, (err, res) => {
             if (err) {
               console.log(err.stack)
             } else {
-              
               //refresh().then(console.log('success') );
             }
           })
@@ -187,14 +136,19 @@ app.post('/reg', function(request, response) {
   };
 })
 
-/*
-app.use('/auth/', function (req, res){
-  res.render("auth.hbs",
-    Object.keys())
-})
-*/
-app.use('/conts/:id', function (req, res) {
-    res.render("contact", conts[req.params.id])
+
+app.use('/conts/:id', function (request, res) {
+    //  ошибка в том, что request.params.id = id юзера
+    //  возможные решения: 
+    //  убрать хранение друзей в памяти и делать sql запрос каждый раз
+    //  плюсы: снимат нагрузку с оперативки
+    //  минусы: предположительно увеличивает время отклика
+    //
+    //  запоминать id юзеров по расположению на странице
+    //  плюсы: быстрое время отклика
+    //  минусы: я пидорас (и у леши возможно кончится оперативка на сервере)
+    console.log(request.session.friends, request.params.id - 1)
+    res.render("contact", request.session.friends[request.params.id - 1])
   });
 
 app.use("//", function(_, response) {
