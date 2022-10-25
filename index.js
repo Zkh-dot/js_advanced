@@ -87,19 +87,27 @@ app.post('/auth', function(request, response) {
       });
     }
 });
-  
+    
 app.post('/find', function(request, response) {
   let findid = request.body.findid;
   if (findid) {
+    try{
       //   не хватает проверки уникальности дружбы
-      client.query(`INSERT INTO friends VALUES ('${request.session.userid}', '${findid}')`, function(error, results, fields) {
-       
+      client.query(`INSERT INTO friendlist VALUES ('${request.session.userid}', '${findid}')`, function(error, results, fields) {
+      
         if (error) console.log( error )
         else { 
+          client.query(`INSERT INTO active_requests VALUES ('${request.session.userid}', '${findid}')`)
           request.session.message = "Запрос в друздя отправлен";
           response.redirect('http://scv.forshielders.ru/');
       }			
     });
+  }
+  catch(e){
+    console.log(e)
+    request.session.message = "Этот контакт уже у вас в друзьях!"
+    response.redirect('http://scv.forshielders.ru/');
+  }
   }
 });
 
@@ -142,9 +150,17 @@ app.post('/reg', function(request, response) {
   };
 })
 
-app.use('/add', async function(request, res){
-  let new_friend = request.body.friend_id
-
+app.use('/add', async function(request, response){
+  try{
+    let new_friend = request.body.friend_id
+    client.query(`INSERT INTO friendlist VALUES ('${request.session.userid}', '${new_friend}')`) 
+    client.query(`DELETE FROM active_requests WHERE reciver = ${request.session.userid} and sender = ${new_friend}`)
+    request.session.message = "Контакт добавлен!"
+  }
+  catch{
+    request.session.message = "Ошибка при добавлении контакта"
+  }
+  response.redirect('http://scv.forshielders.ru/');
 })
 
 
