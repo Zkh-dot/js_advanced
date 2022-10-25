@@ -111,6 +111,14 @@ app.post('/find', function(request, response) {
   }
 });
 
+/*
+    тут будет получение сообщений
+    запрос в бд:
+    select * from messages where sender = ${} or reciver = ${} or sender = ${} or reciver = ${} order by "time" 
+    можно пока написать просто загрузку, а завтра доделать сокетом
+    а можно нет 
+    хз
+*/
 
 app.post('/reg', function(request, response) {
   try{
