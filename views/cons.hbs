@@ -7,11 +7,17 @@
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.1/css/all.css">
 </head>
 <body>
+    {{#if message}}
+        <p>{{message}}</p>
+    {{/if}}
     <h1>Список контактов</h1>
     <div id="main">
 {{#each data_fr}}
     <div>
         <p>
+            {{#if this.photo}}
+                <img src="/img/{{photo}}.jpg" style="width: 20px;"></img>
+            {{/if}}
             <a href="/conts/{{this.id}}">{{this.username}}</a>
             {{#if this.status}} 
                 <i class="fa fa-check" aria-hidden="true"></i>
@@ -21,10 +27,24 @@
         </p>
     </div>
 {{/each}}
+{{#each f_req}}
+    <div class="req">
+        <text>Добавить {{this.username}} в список контактов?</text>
+        <form action="/add" method="post">
+            <input type="number" name="friend_id" value="{{this.sender}}" id = "friend_id" required="" hidden = true>
+            <input type="submit" value="добавить">
+        </form>
+        <form action="/deny" method="post">
+            <input type="number" name="friend_id" value="{{this.sender}}" id = "friend_id" required="" hidden = true>
+            <input type="submit" value="отклонить">
+        </form>
+    </div>
+{{/each}}
     </div>
     <form action="/find" method="post">
         <input type="text" name="findid" placeholder="user's id" id="userid" required="">
         <input type="submit" value="find">
     </form>
+    <button id="nahuy"> </button>
 </body>
 <html>

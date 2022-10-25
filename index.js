@@ -19,7 +19,6 @@ const client = new Pool({
 client.connect()
 var usernames = []
 
-var message = "";
 
 const app = express();
 app.set("view engine", "hbs");
@@ -39,15 +38,21 @@ app.use("//", async function(request, response) {
  
   if(request.session.loggedin){
     data_friends_promis = client.query(`select id, username, status, photo, width from friendlist join users on users.id = friendlist.friend_2 where friendlist.friend_1 = '${request.session.userid}' `);
-    data_req_promis = client.query(`SELECT sender, reciver from active_requests  WHERE reciver = '${request.session.userid}'`);
+    data_req_promis = client.query(`SELECT sender, username from active_requests join users on users.id = sender WHERE reciver = '${request.session.userid}'`);
     console.log(`select id, username, status, photo, width from friendlist join users on users.id = friendlist.friend_2 where friendlist.friend_1 = '${request.session.userid}' `)
+    
     let data_friends = await data_friends_promis;
     let data_req = await data_req_promis; 
+
     request.session.friends = data_friends.rows;
     console.log("data_friends.rows =", data_friends);  
-    content = {'data_fr': data_friends.rows, 'f_req': data_req.rows, 'message': message}
+
+    content = {'data_fr': data_friends.rows, 'f_req': data_req.rows, 'message': request.session.message}
     console.log("content  = ", content)
+    request.session.message = ''
+
     response.render("cons.hbs", content);
+    
   }
   else{
     response.sendFile(path.join(__dirname + '/views/login.html'));
@@ -65,7 +70,8 @@ app.post('/auth', function(request, response) {
         client.query(`SELECT * FROM users WHERE username = '${username}' AND password = '${password}'`, function(error, results, fields) {
          
           // If there is an issue with the query, output the erro
-          if (error) console.log( error );
+          if (error) {console.log( error )
+          return 0;}
           // If the account exists
           if (results.rowCount > 0) {
             request.session.loggedin = true;
@@ -74,7 +80,7 @@ app.post('/auth', function(request, response) {
             
             response.redirect('http://scv.forshielders.ru/');
         } else {
-          //alert('Incorrect Username and/or Password!');
+          //sos('Incorrect Username and/or Password!');
           response.redirect('http://scv.forshielders.ru/');
         }			
         response.end();
@@ -85,14 +91,14 @@ app.post('/auth', function(request, response) {
 app.post('/find', function(request, response) {
   let findid = request.body.findid;
   if (findid) {
-
-      client.query(`INCERT INTO active_requests VALUES ('${request.session.userid}', '${findid}')'`, function(error, results, fields) {
+      //   не хватает проверки уникальности дружбы
+      client.query(`INSERT INTO friends VALUES ('${request.session.userid}', '${findid}')`, function(error, results, fields) {
        
         if (error) console.log( error )
         else { 
-        response.redirect('http://scv.forshielders.ru/');
+          request.session.message = "Запрос в друздя отправлен";
+          response.redirect('http://scv.forshielders.ru/');
       }			
-      response.end();
     });
   }
 });
@@ -114,7 +120,7 @@ app.post('/reg', function(request, response) {
           response.redirect('http://scv.forshielders.ru/');
         } else {
 
-          client.query(`INSERT INTO "users" (username, password, status) VALUES ('${username}',  '${password}', true)`, (err, res) => {
+          client.query(`INSERT INTO "users" (username, password, status, width) VALUES ('${username}',  '${password}', true, 200)`, (err, res) => {
             if (err) {
               console.log(err.stack)
             } else {
@@ -136,8 +142,13 @@ app.post('/reg', function(request, response) {
   };
 })
 
+app.use('/add', async function(request, res){
+  let new_friend = request.body.friend_id
 
-app.use('/conts/:id', function (request, res) {
+})
+
+
+app.use('/conts/:id', async function (request, res) {
     //  ошибка в том, что request.params.id = id юзера
     //  возможные решения: 
     //  убрать хранение друзей в памяти и делать sql запрос каждый раз
@@ -147,8 +158,12 @@ app.use('/conts/:id', function (request, res) {
     //  запоминать id юзеров по расположению на странице
     //  плюсы: быстрое время отклика
     //  минусы: я пидорас (и у леши возможно кончится оперативка на сервере)
-    console.log(request.session.friends, request.params.id - 1)
-    res.render("contact", request.session.friends[request.params.id - 1])
+    data_user_promice = client.query(`select * from users where id = ${request.params.id}`);
+
+    let data_user = await data_user_promice;
+
+    console.log(data_user.rows)
+    res.render("contact", data_user.rows[0])
   });
 
 app.use("//", function(_, response) {

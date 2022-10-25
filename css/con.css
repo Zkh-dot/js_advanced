@@ -2,3 +2,13 @@
     display: flex;
     flex-direction: column;
 }
+
+.req {
+    display: flex;
+}
+
+#nahuy {
+    background: transparent;
+    border: none !important;
+    font-size: 0; 
+}
