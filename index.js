@@ -22,6 +22,8 @@ const client = new Pool({
 client.connect() 
 var usernames = []
 
+var wscts = {}
+
 
 app.set("view engine", "hbs");
 app.use('/css', express.static('css'));
@@ -33,38 +35,48 @@ app.use(session({
 	saveUninitialized: true
 }));
 app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+app.use(bodyParser.json()); 
 
 app.use(bodyParser.text({type: '*/*'}))
 
-app.ws('/new_message', function(ws, req) {
-  ws.on('message', function(msg) {
-    ws.send(msg);
+app.ws('/new_message', async function(ws, req) {
+  ws.on('message', function(msg) { 
+    console.log(msg);
   });
+  w = await ws
+  console.log('connection established:', w, req.session.userid)
+  
+  wscts[req.session.userid] = w
+  ws.on('close', function() {
+    console.log('The connection was closed!');
+  });
+  console.log(wscts)
 });
 
 app.use("/favicon.ico", function(req, res){
   res.sendfile('img/Photo.ico')
 })
 
+
+
 app.use("//", async function(request, response) {
  
   if(request.session.loggedin){
     data_friends_promis = client.query(`select id, username, status, photo, width from friendlist join users on users.id = friendlist.friend_2 where friendlist.friend_1 = '${request.session.userid}' `);
     data_req_promis = client.query(`SELECT sender, username from active_requests join users on users.id = sender WHERE reciver = '${request.session.userid}'`);
-    console.log(`select id, username, status, photo, width from friendlist join users on users.id = friendlist.friend_2 where friendlist.friend_1 = '${request.session.userid}' `)
+    //console.log(`select id, username, status, photo, width from friendlist join users on users.id = friendlist.friend_2 where friendlist.friend_1 = '${request.session.userid}' `)
     
     let data_friends = await data_friends_promis;
     let data_req = await data_req_promis; 
 
     request.session.friends = data_friends.rows;
-    console.log("data_friends.rows =", data_friends);  
+    //console.log("data_friends.rows =", data_friends);  
 
     content = {'data_fr': data_friends.rows, 'f_req': data_req.rows, 'message': request.session.message}
-    console.log("content  = ", content)
+    //console.log("content  = ", content)
     request.session.message = ''
 
-    response.render("cons.hbs", content);
+    response.render("cons.hbs", content); 
     
   }
   else{
@@ -83,7 +95,7 @@ app.post('/auth', function(request, response) {
         client.query(`SELECT * FROM users WHERE username = '${username}' AND password = '${password}'`, function(error, results, fields) {
          
           // If there is an issue with the query, output the erro
-          if (error) {console.log( error )
+          if (error) {//console.log( error )
           return 0;}
           // If the account exists
           if (results.rowCount > 0) {
@@ -117,7 +129,7 @@ app.post('/find', function(request, response) {
     });
   }
   catch(e){
-    console.log(e)
+    //console.log(e)
     request.session.message = "Этот контакт уже у вас в друзьях!"
     response.redirect('http://scv.forshielders.ru/');
   }
@@ -154,9 +166,9 @@ app.post('/reg', function(request, response) {
 
           client.query(`INSERT INTO "users" (username, password, status, width) VALUES ('${username}',  '${password}', true, 200)`, (err, res) => {
             if (err) {
-              console.log(err.stack)
+              //console.log(err.stack)
             } else {
-              //refresh().then(console.log('success') );
+              //refresh().then(//console.log('success') );
             }
           })
           response.redirect('http://scv.forshielders.ru/');
@@ -165,12 +177,12 @@ app.post('/reg', function(request, response) {
       };
     }
     catch(e){
-      //console.log(e)
+      ////console.log(e)
     }
   }
   
   catch(err){
-    //console.log(err);
+    ////console.log(err);
   };
 })
 
@@ -191,11 +203,13 @@ app.use('/add', async function(request, response){
 
 app.use('/conts/:id/send', async function(request, response){
 
-  console.log(`INSERT INTO messages (sender, reciver, text, time) VALUES ('${request.session.userid}', '${request.params.id}', '${request.body}', $1)`, [new Date()])
+  //console.log(`INSERT INTO messages (sender, reciver, text, time) VALUES ('${request.session.userid}', '${request.params.id}', '${request.body}', $1)`, [new Date()])
   client.query(`INSERT INTO messages (sender, reciver, text, time) VALUES ('${request.session.userid}', '${request.params.id}', '${request.body}', $1)`, [new Date()])
-  console.log(request.params.id, "=>", request.body)
-
-})
+  //console.log(request.params.id, "=>", request.body)
+  console.log(wscts)
+  console.log(`Тут я пробую отправить ${request.params.id} по адресу ${wscts[request.params.id]} ${request.body}`)
+  wscts[request.params.id].send(request.body)
+}) 
 
 
 
@@ -207,7 +221,7 @@ app.use('/conts/:id', async function (request, res) {
     let data_user = await data_user_promice;
     let old_msgs = await old_msgs_promice;
 
-    console.log(old_msgs.rows, request.session.username)
+    //console.log(old_msgs.rows, request.session.username)
     res.render("contact", {"info": data_user.rows[0], "msgs": old_msgs.rows, 'my_username': request.session.username})
   });
 
@@ -217,7 +231,7 @@ app.use("//", function(_, response) {
     response.render("cons.hbs",
       Object.keys(conts).map(a => ({"id": a, ...conts[a]}))
     );
-    console.log()
+    //console.log()
 });
 
 app.use("*", function (req, res) {
