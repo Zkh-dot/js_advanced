@@ -4,12 +4,21 @@
     <title>Контакт: {{username}}</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="/css/contact.css">
+    <script src="/client/client.js"></script>
 </head>
 <body>
-    <h1>{{username}}</h1>
-    <p>{{status}}</p>
-    {{#if photo}}
-    <img src="/img/{{photo}}.jpg" style="width: {{width}}px;"></img>
+    <h1>{{info.username}}</h1>
+    <p>{{info.status}}</p>
+    {{#if info.photo}}
+    <img src="/img/{{info.photo}}.jpg" style="width: {{info.width}}px;"></img>
     {{/if}}
+    {{#each msgs}}
+        <p>from {{this.username}}: {{this.text}}</p>
+    {{/each}}
+    <p id="inpukt">
+        <input type="text" name="newmsg" placeholder="..." id="newmsg" required="" size="50">
+        <button onclick="send_new_msg()">send</button>
+    </p>
+    <t id='whoami?' hidden>{{my_username}}</t>
 </body>
 <html>

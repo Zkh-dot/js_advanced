@@ -1,9 +1,12 @@
 //тут есть  код
 
 const express = require("express");
+const app = express();
+
 const session = require('express-session');
 const path = require('path');
 var bodyParser = require('body-parser');
+var expressWs = require('express-ws')(app);
 
 const { Pool } = require('pg')
 const client = new Pool({
@@ -16,23 +19,33 @@ const client = new Pool({
   connectionTimeoutMillis: 0,
 })
 
-client.connect()
+client.connect() 
 var usernames = []
 
 
-const app = express();
 app.set("view engine", "hbs");
-
 app.use('/css', express.static('css'));
-app.use('/img', express.static('img')); 
+app.use('/img', express.static('img'));
+app.use('/client', express.static('client')); 
 app.use(session({
 	secret: 'secret',
 	resave: true,
 	saveUninitialized: true
 }));
-
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+
+app.use(bodyParser.text({type: '*/*'}))
+
+app.ws('/new_message', function(ws, req) {
+  ws.on('message', function(msg) {
+    ws.send(msg);
+  });
+});
+
+app.use("/favicon.ico", function(req, res){
+  res.sendfile('img/Photo.ico')
+})
 
 app.use("//", async function(request, response) {
  
@@ -114,7 +127,10 @@ app.post('/find', function(request, response) {
 /*
     тут будет получение сообщений
     запрос в бд:
+    
     select * from messages where sender = ${} or reciver = ${} or sender = ${} or reciver = ${} order by "time" 
+    select * from messages where sender = ${} or reciver = ${} or sender = ${} or reciver = ${} and time >= r_time order by "time" 
+    
     можно пока написать просто загрузку, а завтра доделать сокетом
     а можно нет 
     хз
@@ -172,28 +188,36 @@ app.use('/add', async function(request, response){
 })
 
 
+
+app.use('/conts/:id/send', async function(request, response){
+
+  console.log(`INSERT INTO messages (sender, reciver, text, time) VALUES ('${request.session.userid}', '${request.params.id}', '${request.body}', $1)`, [new Date()])
+  client.query(`INSERT INTO messages (sender, reciver, text, time) VALUES ('${request.session.userid}', '${request.params.id}', '${request.body}', $1)`, [new Date()])
+  console.log(request.params.id, "=>", request.body)
+
+})
+
+
+
 app.use('/conts/:id', async function (request, res) {
-    //  ошибка в том, что request.params.id = id юзера
-    //  возможные решения: 
-    //  убрать хранение друзей в памяти и делать sql запрос каждый раз
-    //  плюсы: снимат нагрузку с оперативки
-    //  минусы: предположительно увеличивает время отклика
-    //
-    //  запоминать id юзеров по расположению на странице
-    //  плюсы: быстрое время отклика
-    //  минусы: я пидорас (и у леши возможно кончится оперативка на сервере)
+ 
     data_user_promice = client.query(`select * from users where id = ${request.params.id}`);
+    old_msgs_promice = client.query(`select messages.sender, messages.reciver, messages."text", users.username from messages join users on messages.sender = users.id where sender in (${request.params.id}, ${request.session.userid}) and reciver in (${request.params.id}, ${request.session.userid}) order by "time" `)
 
     let data_user = await data_user_promice;
+    let old_msgs = await old_msgs_promice;
 
-    console.log(data_user.rows)
-    res.render("contact", data_user.rows[0])
+    console.log(old_msgs.rows, request.session.username)
+    res.render("contact", {"info": data_user.rows[0], "msgs": old_msgs.rows, 'my_username': request.session.username})
   });
+
+
 
 app.use("//", function(_, response) {
     response.render("cons.hbs",
       Object.keys(conts).map(a => ({"id": a, ...conts[a]}))
     );
+    console.log()
 });
 
 app.use("*", function (req, res) {
