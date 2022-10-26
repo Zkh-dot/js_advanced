@@ -103,10 +103,10 @@ app.post('/auth', function(request, response) {
             request.session.username = username;
             request.session.userid = results.rows[0].id
             
-            response.redirect('http://scv.forshielders.ru/');
+            response.redirect('https://scv.forshielders.ru/');
         } else {
           //sos('Incorrect Username and/or Password!');
-          response.redirect('http://scv.forshielders.ru/');
+          response.redirect('https://scv.forshielders.ru/');
         }			
         response.end();
       });
@@ -124,14 +124,14 @@ app.post('/find', function(request, response) {
         else { 
           client.query(`INSERT INTO active_requests VALUES ('${request.session.userid}', '${findid}')`)
           request.session.message = "Запрос в друздя отправлен";
-          response.redirect('http://scv.forshielders.ru/');
+          response.redirect('https://scv.forshielders.ru/');
       }			
     });
   }
   catch(e){
     //console.log(e)
     request.session.message = "Этот контакт уже у вас в друзьях!"
-    response.redirect('http://scv.forshielders.ru/');
+    response.redirect('https://scv.forshielders.ru/');
   }
   }
 });
@@ -161,7 +161,7 @@ app.post('/reg', function(request, response) {
           
           //тут нужно вывесить ошибку
 
-          response.redirect('http://scv.forshielders.ru/');
+          response.redirect('https://scv.forshielders.ru/');
         } else {
 
           client.query(`INSERT INTO "users" (username, password, status, width) VALUES ('${username}',  '${password}', true, 200)`, (err, res) => {
@@ -171,7 +171,7 @@ app.post('/reg', function(request, response) {
               //refresh().then(//console.log('success') );
             }
           })
-          response.redirect('http://scv.forshielders.ru/');
+          response.redirect('https://scv.forshielders.ru/');
         }			
         response.end();
       };
@@ -196,10 +196,13 @@ app.use('/add', async function(request, response){
   catch{
     request.session.message = "Ошибка при добавлении контакта"
   }
-  response.redirect('http://scv.forshielders.ru/');
+  response.redirect('https://scv.forshielders.ru/');
 })
 
-
+app.use('/logout', async function(req, res){
+  req.session.destroy();
+  res.redirect('https://scv.forshielders.ru/');
+})
 
 app.use('/conts/:id/send', async function(request, response){
 
@@ -212,20 +215,21 @@ app.use('/conts/:id/send', async function(request, response){
 }) 
 
 app.use('/rmfriend', async function(request, response){
-  let rmfriend_promice = client.query(`delete from friendlist where friend_1 = ${request.session.userid} and friend_2 = ${request.body}`);
+  console.log(request.body)
+  let rmfriend_promice = client.query(`delete from friendlist where friend_1 = ${request.session.userid} and friend_2 = ${request.query.friend}`);
 
   let rmfriend = await rmfriend_promice;
 
-  response.redirect('/');
+  response.redirect('https://scv.forshielders.ru/');
 
 })
 
-app.use('/rmfriend', async function(request, response){
-  let rmfriend_promice = client.query(`delete from friendlist where friend_1 = ${request.session.userid} and friend_2 = ${request.body} or friend_2 = ${request.session.userid} and friend_1 = ${request.body}`);
+app.use('/blacklist', async function(request, response){
+  let rmfriend_promice = client.query(`delete from friendlist where friend_1 = ${request.session.userid} and friend_2 = ${request.query.friend} or friend_2 = ${request.session.userid} and friend_1 = ${request.query.friend}`);
 
   let rmfriend = await rmfriend_promice;
 
-  response.redirect('/');
+  response.redirect('https://scv.forshielders.ru/'); 
 
 })
 

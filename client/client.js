@@ -1,5 +1,5 @@
-w = new WebSocket("ws://scv.forshielders.ru:4444/new_message")
-xml = new XMLHttpRequest() 
+w = new WebSocket("wss://scv.forshielders.ru/new_message")
+
 
 w.onmessage = (msg) => {
     let container = document.createElement('div')
@@ -9,7 +9,7 @@ w.onmessage = (msg) => {
 console.log('client side is running')
 
 function send_new_msg(){
-
+    let xml = new XMLHttpRequest() 
     xml.open("POST", document.location.toString() + "/send")
     xml.send(document.getElementById('newmsg').value)
     let container = document.createElement('div')
@@ -18,12 +18,14 @@ function send_new_msg(){
     document.getElementById('newmsg').value = ''   
 }
 
+function logout(){
+    document.location = "/logout"
+}
+
 function rmfriend(){
-    xml.open("POST", "/rmfriend")
-    xml.send(document.location.toString().split('/')[4])
+    document.location = `/rmfriend?friend=${document.location.toString().split('/')[4]}`
 }
 
 function blacklist(){
-    xml.open("POST", "/rmfriend")
-    xml.send(document.location.toString().split('/')[4])
+    document.location = `/blacklist?friend=${document.location.toString().split('/')[4]}`
 }
