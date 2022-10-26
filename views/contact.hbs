@@ -8,6 +8,9 @@
 </head>
 <body>
     <h1>{{info.username}}</h1>
+    <p><a href="//">back</a></p>
+    <button onclick="rmfriend()">rmfriend</button>
+    <button onclick="blacklist()">blacklist</button>
     <p>{{info.status}}</p>
     {{#if info.photo}}
     <img src="/img/{{info.photo}}.jpg" style="width: {{info.width}}px;"></img>

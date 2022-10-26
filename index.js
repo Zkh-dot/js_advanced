@@ -211,6 +211,23 @@ app.use('/conts/:id/send', async function(request, response){
   wscts[request.params.id].send(request.body)
 }) 
 
+app.use('/rmfriend', async function(request, response){
+  let rmfriend_promice = client.query(`delete from friendlist where friend_1 = ${request.session.userid} and friend_2 = ${request.body}`);
+
+  let rmfriend = await rmfriend_promice;
+
+  response.redirect('/');
+
+})
+
+app.use('/rmfriend', async function(request, response){
+  let rmfriend_promice = client.query(`delete from friendlist where friend_1 = ${request.session.userid} and friend_2 = ${request.body} or friend_2 = ${request.session.userid} and friend_1 = ${request.body}`);
+
+  let rmfriend = await rmfriend_promice;
+
+  response.redirect('/');
+
+})
 
 
 app.use('/conts/:id', async function (request, res) {
