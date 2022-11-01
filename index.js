@@ -1,5 +1,3 @@
-//тут есть  код
-
 const express = require("express");
 const app = express();
 
@@ -64,16 +62,14 @@ app.use("//", async function(request, response) {
   if(request.session.loggedin){
     data_friends_promis = client.query(`select id, username, status, photo, width from friendlist join users on users.id = friendlist.friend_2 where friendlist.friend_1 = '${request.session.userid}' `);
     data_req_promis = client.query(`SELECT sender, username from active_requests join users on users.id = sender WHERE reciver = '${request.session.userid}'`);
-    //console.log(`select id, username, status, photo, width from friendlist join users on users.id = friendlist.friend_2 where friendlist.friend_1 = '${request.session.userid}' `)
     
     let data_friends = await data_friends_promis;
     let data_req = await data_req_promis; 
 
-    request.session.friends = data_friends.rows;
-    //console.log("data_friends.rows =", data_friends);  
+    request.session.friends = data_friends.rows; 
 
     content = {'data_fr': data_friends.rows, 'f_req': data_req.rows, 'message': request.session.message}
-    //console.log("content  = ", content)
+    
     request.session.message = ''
 
     response.render("cons.hbs", content); 
@@ -83,8 +79,19 @@ app.use("//", async function(request, response) {
     response.sendFile(path.join(__dirname + '/views/login.html'));
   }
 }); 
+//главная страничка, отдающая только html
+app.use("//", async function(request, response) {
+  if(request.session.loggedin){
+    response.sendFile(path.join(__dirname + "mainpage.html"));
+  }
+  else{
+    response.sendFile(path.join(__dirname + '/views/login.html'));
+  }
+});
  
+app.use('/get_friends', async function(request, response){
   
+})
 
 app.post('/auth', function(request, response) {
 
@@ -94,10 +101,9 @@ app.post('/auth', function(request, response) {
     if (username && password) {
         client.query(`SELECT * FROM users WHERE username = '${username}' AND password = '${password}'`, function(error, results, fields) {
          
-          // If there is an issue with the query, output the erro
-          if (error) {//console.log( error )
+          if (error) {
           return 0;}
-          // If the account exists
+
           if (results.rowCount > 0) {
             request.session.loggedin = true;
             request.session.username = username;
@@ -105,7 +111,7 @@ app.post('/auth', function(request, response) {
             
             response.redirect('https://scv.forshielders.ru/');
         } else {
-          //sos('Incorrect Username and/or Password!');
+          
           response.redirect('https://scv.forshielders.ru/');
         }			
         response.end();
@@ -117,7 +123,7 @@ app.post('/find', function(request, response) {
   let findid = request.body.findid;
   if (findid) {
     try{
-      //   не хватает проверки уникальности дружбы
+      
       client.query(`INSERT INTO friendlist VALUES ('${request.session.userid}', '${findid}')`, function(error, results, fields) {
       
         if (error) console.log( error )
@@ -129,24 +135,12 @@ app.post('/find', function(request, response) {
     });
   }
   catch(e){
-    //console.log(e)
+    
     request.session.message = "Этот контакт уже у вас в друзьях!"
     response.redirect('https://scv.forshielders.ru/');
   }
   }
 });
-
-/*
-    тут будет получение сообщений
-    запрос в бд:
-    
-    select * from messages where sender = ${} or reciver = ${} or sender = ${} or reciver = ${} order by "time" 
-    select * from messages where sender = ${} or reciver = ${} or sender = ${} or reciver = ${} and time >= r_time order by "time" 
-    
-    можно пока написать просто загрузку, а завтра доделать сокетом
-    а можно нет 
-    хз
-*/
 
 app.post('/reg', function(request, response) {
   try{
@@ -158,17 +152,15 @@ app.post('/reg', function(request, response) {
     if (username && password) {
       
         if (usernames.find(el => el.username == username)) {
-          
-          //тут нужно вывесить ошибку
 
           response.redirect('https://scv.forshielders.ru/');
+
         } else {
 
           client.query(`INSERT INTO "users" (username, password, status, width) VALUES ('${username}',  '${password}', true, 200)`, (err, res) => {
             if (err) {
-              //console.log(err.stack)
             } else {
-              //refresh().then(//console.log('success') );
+              
             }
           })
           response.redirect('https://scv.forshielders.ru/');
@@ -177,12 +169,12 @@ app.post('/reg', function(request, response) {
       };
     }
     catch(e){
-      ////console.log(e)
+
     }
   }
   
   catch(err){
-    ////console.log(err);
+    
   };
 })
 
@@ -206,9 +198,9 @@ app.use('/logout', async function(req, res){
 
 app.use('/conts/:id/send', async function(request, response){
 
-  //console.log(`INSERT INTO messages (sender, reciver, text, time) VALUES ('${request.session.userid}', '${request.params.id}', '${request.body}', $1)`, [new Date()])
+  
   client.query(`INSERT INTO messages (sender, reciver, text, time) VALUES ('${request.session.userid}', '${request.params.id}', '${request.body}', $1)`, [new Date()])
-  //console.log(request.params.id, "=>", request.body)
+
   console.log(wscts)
   console.log(`Тут я пробую отправить ${request.params.id} по адресу ${wscts[request.params.id]} ${request.body}`)
   wscts[request.params.id].send(request.body)
@@ -242,7 +234,6 @@ app.use('/conts/:id', async function (request, res) {
     let data_user = await data_user_promice;
     let old_msgs = await old_msgs_promice;
 
-    //console.log(old_msgs.rows, request.session.username)
     res.render("contact", {"info": data_user.rows[0], "msgs": old_msgs.rows, 'my_username': request.session.username})
   });
 
@@ -252,7 +243,7 @@ app.use("//", function(_, response) {
     response.render("cons.hbs",
       Object.keys(conts).map(a => ({"id": a, ...conts[a]}))
     );
-    //console.log()
+    
 });
 
 app.use("*", function (req, res) {
