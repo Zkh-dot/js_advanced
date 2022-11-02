@@ -112,24 +112,22 @@ app.use(bodyParser.text({type: '*/*'}))
 
 app.ws('/new_message', async function(ws, req) {
   ws.on('message', function(msg) { 
-    //console.log(msg);
+    
   });
   w = await ws
-  //console.log('connection established:', w, req.session.userid)
   
   wscts[req.session.userid] = w
   ws.on('close', function() {
   });
 });
-
+ 
 app.use("/favicon.ico", function(req, res){
   res.sendfile('img/Photo.ico')
 })
 
 app.use("/get_table", async function(request, response){
-  if(request.method == "POST" || request.method == "PUT"){
+  if(request.method == "POST" || request.method == "PUT"){ 
     let new_con = new Client_connect(request.body.table)
-    console.log(request.body) //body string
     await new_con.PUST(request.body.items)
     response.send('ok.')
   }
@@ -137,6 +135,11 @@ app.use("/get_table", async function(request, response){
     let new_con = new Client_connect(request.query.table)
     await new_con.GET({'keys': request.query.keys, 'where': {}}) 
     response.send(new_con.request)
+  }
+  if(request.method == "DELETE"){
+    let new_con = new Client_connect(request.query.table)
+    await new_con.DELETE({'id': request.query.id})
+    response.send('ok.')
   }
   
 })
