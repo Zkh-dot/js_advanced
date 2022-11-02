@@ -1,3 +1,5 @@
+//тут есть  код
+
 const express = require("express");
 const app = express();
 
@@ -18,6 +20,77 @@ const client = new Pool({
 })
 
 client.connect() 
+
+
+class Client_connect{
+  constructor(tablename){
+      this.tablename = tablename
+  }
+
+  async GET(jsn){
+      console.log('->', jsn)
+      jsn.keys = jsn.keys.toString();
+
+      let where_search_str = ''
+      if(Object.keys(jsn.where).length != 0)
+          where_search_str = ' WHERE '
+          for(let i of Object.keys(jsn.where)){
+              where_search_str += i.toString() + "='" + jsn.where[i] + "',";
+          }
+          where_search_str = where_search_str.slice(0, -1);
+      console.log(`SELECT ${jsn.keys} FROM ${this.tablename}${where_search_str}`)   
+      let request_promis = client.query(`SELECT ${jsn.keys} FROM ${this.tablename}${where_search_str}`) 
+      let request = await request_promis;
+      this.request = request.rows;
+  }
+
+  async PUST(jsn){
+      if(jsn.id){
+          let set = '';
+          for(let i of Object.keys(jsn)){
+              if(jsn[i] != null)
+                  set += i.toString() + " = '" + jsn[i].toString() + "', ";
+              else
+                  set += i.toString() + ' = null, ';
+          }
+          let request_promis = client.query(`UPDATE ${this.tablename} SET ${set.slice(0, -2)} WHERE id = ${jsn.id}`);
+          console.log(`UPDATE ${this.tablename} SET ${set.slice(0, -2)} WHERE id = ${jsn.id}`);
+          let request = await request_promis;
+          this.request = request;
+      }
+      else{
+          let keys = [];
+          let values = [];
+          for(let i of Object.keys(jsn)){
+              keys.push(i);
+              if(jsn[i] != null)
+                  values.push("'" + jsn[i].toString() + "'");
+              else
+                  values.push("'" + null + "'");
+          }
+          keys = keys.toString();
+          values = values.toString();
+          let request_promis = client.query(`INSERT INTO ${this.tablename} (${keys}) VALUES (${values})`);
+          let request = await request_promis;
+          console.log(`INSERT INTO ${this.tablename} (${keys}) VALUES (${values})`);
+          console.log(request) 
+          this.request = request;
+      }
+  }
+  
+  async DELETE(jsn){
+      let where = ''
+      for(let i of Object.keys(jsn)){
+          if(jsn[i] != null)
+              where += i.toString() + " = '" + jsn[i].toString() + "', ";
+          else
+              where += i.toString() + ' = null, ';
+      }
+      let request_promis = client.query(`DELETE FROM ${this.tablename} WHERE ${where.slice(0, -2)}`)
+      this.request = await request_promis;
+  }
+}
+
 var usernames = []
 
 var wscts = {}
@@ -39,37 +112,51 @@ app.use(bodyParser.text({type: '*/*'}))
 
 app.ws('/new_message', async function(ws, req) {
   ws.on('message', function(msg) { 
-    console.log(msg);
+    //console.log(msg);
   });
   w = await ws
-  console.log('connection established:', w, req.session.userid)
+  //console.log('connection established:', w, req.session.userid)
   
   wscts[req.session.userid] = w
   ws.on('close', function() {
-    console.log('The connection was closed!');
   });
-  console.log(wscts)
 });
 
 app.use("/favicon.ico", function(req, res){
   res.sendfile('img/Photo.ico')
 })
 
-
+app.use("/get_table", async function(request, response){
+  if(request.method == "POST" || request.method == "PUT"){
+    let new_con = new Client_connect(request.body.table)
+    console.log(request.body) //body string
+    await new_con.PUST(request.body.items)
+    response.send('ok.')
+  }
+  if(request.method == "GET"){
+    let new_con = new Client_connect(request.query.table)
+    await new_con.GET({'keys': request.query.keys, 'where': {}}) 
+    response.send(new_con.request)
+  }
+  
+})
 
 app.use("//", async function(request, response) {
  
   if(request.session.loggedin){
     data_friends_promis = client.query(`select id, username, status, photo, width from friendlist join users on users.id = friendlist.friend_2 where friendlist.friend_1 = '${request.session.userid}' `);
     data_req_promis = client.query(`SELECT sender, username from active_requests join users on users.id = sender WHERE reciver = '${request.session.userid}'`);
+    //console.log(`select id, username, status, photo, width from friendlist join users on users.id = friendlist.friend_2 where friendlist.friend_1 = '${request.session.userid}' `)
     
     let data_friends = await data_friends_promis;
     let data_req = await data_req_promis; 
 
-    request.session.friends = data_friends.rows; 
+
+    request.session.friends = data_friends.rows;
+    //console.log("data_friends.rows =", data_friends);  
 
     content = {'data_fr': data_friends.rows, 'f_req': data_req.rows, 'message': request.session.message}
-    
+    console.log("content  = ", content)
     request.session.message = ''
 
     response.render("cons.hbs", content); 
@@ -79,19 +166,8 @@ app.use("//", async function(request, response) {
     response.sendFile(path.join(__dirname + '/views/login.html'));
   }
 }); 
-//главная страничка, отдающая только html
-app.use("//", async function(request, response) {
-  if(request.session.loggedin){
-    response.sendFile(path.join(__dirname + "mainpage.html"));
-  }
-  else{
-    response.sendFile(path.join(__dirname + '/views/login.html'));
-  }
-});
  
-app.use('/get_friends', async function(request, response){
   
-})
 
 app.post('/auth', function(request, response) {
 
@@ -101,9 +177,10 @@ app.post('/auth', function(request, response) {
     if (username && password) {
         client.query(`SELECT * FROM users WHERE username = '${username}' AND password = '${password}'`, function(error, results, fields) {
          
-          if (error) {
+          // If there is an issue with the query, output the erro
+          if (error) {//console.log( error )
           return 0;}
-
+          // If the account exists
           if (results.rowCount > 0) {
             request.session.loggedin = true;
             request.session.username = username;
@@ -111,7 +188,7 @@ app.post('/auth', function(request, response) {
             
             response.redirect('https://scv.forshielders.ru/');
         } else {
-          
+          //sos('Incorrect Username and/or Password!');
           response.redirect('https://scv.forshielders.ru/');
         }			
         response.end();
@@ -123,7 +200,7 @@ app.post('/find', function(request, response) {
   let findid = request.body.findid;
   if (findid) {
     try{
-      
+      //   не хватает проверки уникальности дружбы
       client.query(`INSERT INTO friendlist VALUES ('${request.session.userid}', '${findid}')`, function(error, results, fields) {
       
         if (error) console.log( error )
@@ -135,7 +212,7 @@ app.post('/find', function(request, response) {
     });
   }
   catch(e){
-    
+    //console.log(e)
     request.session.message = "Этот контакт уже у вас в друзьях!"
     response.redirect('https://scv.forshielders.ru/');
   }
@@ -152,15 +229,17 @@ app.post('/reg', function(request, response) {
     if (username && password) {
       
         if (usernames.find(el => el.username == username)) {
+          
+          //тут нужно вывесить ошибку
 
           response.redirect('https://scv.forshielders.ru/');
-
         } else {
 
           client.query(`INSERT INTO "users" (username, password, status, width) VALUES ('${username}',  '${password}', true, 200)`, (err, res) => {
             if (err) {
+              //console.log(err.stack)
             } else {
-              
+              //refresh().then(//console.log('success') );
             }
           })
           response.redirect('https://scv.forshielders.ru/');
@@ -168,13 +247,13 @@ app.post('/reg', function(request, response) {
         response.end();
       };
     }
-    catch(e){
-
+    catch(e){ 
+      ////console.log(e)
     }
   }
   
   catch(err){
-    
+    ////console.log(err);
   };
 })
 
@@ -198,16 +277,13 @@ app.use('/logout', async function(req, res){
 
 app.use('/conts/:id/send', async function(request, response){
 
-  
   client.query(`INSERT INTO messages (sender, reciver, text, time) VALUES ('${request.session.userid}', '${request.params.id}', '${request.body}', $1)`, [new Date()])
-
-  console.log(wscts)
-  console.log(`Тут я пробую отправить ${request.params.id} по адресу ${wscts[request.params.id]} ${request.body}`)
   wscts[request.params.id].send(request.body)
+
 }) 
 
 app.use('/rmfriend', async function(request, response){
-  console.log(request.body)
+  
   let rmfriend_promice = client.query(`delete from friendlist where friend_1 = ${request.session.userid} and friend_2 = ${request.query.friend}`);
 
   let rmfriend = await rmfriend_promice;
@@ -234,6 +310,7 @@ app.use('/conts/:id', async function (request, res) {
     let data_user = await data_user_promice;
     let old_msgs = await old_msgs_promice;
 
+    //console.log(old_msgs.rows, request.session.username)
     res.render("contact", {"info": data_user.rows[0], "msgs": old_msgs.rows, 'my_username': request.session.username})
   });
 
@@ -243,7 +320,7 @@ app.use("//", function(_, response) {
     response.render("cons.hbs",
       Object.keys(conts).map(a => ({"id": a, ...conts[a]}))
     );
-    
+    //console.log()
 });
 
 app.use("*", function (req, res) {
