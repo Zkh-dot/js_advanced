@@ -2,6 +2,7 @@
 
 const express = require("express");
 const app = express();
+const { fetch } = require('node-fetch')
 
 const session = require('express-session');
 const path = require('path');
@@ -22,7 +23,7 @@ const client = new Pool({
 client.connect() 
 
 
-class Client_connect{
+class Client_connect{ 
   constructor(tablename){
       this.tablename = tablename
   }
@@ -124,7 +125,7 @@ app.ws('/new_message', async function(ws, req) {
 app.use("/favicon.ico", function(req, res){
   res.sendfile('img/Photo.ico')
 })
-
+ 
 app.use("/get_table", async function(request, response){
   if(request.method == "POST" || request.method == "PUT"){ 
     let new_con = new Client_connect(request.body.table)
@@ -188,7 +189,7 @@ app.post('/auth', function(request, response) {
             request.session.loggedin = true;
             request.session.username = username;
             request.session.userid = results.rows[0].id
-            
+              
             response.redirect('https://scv.forshielders.ru/');
         } else {
           //sos('Incorrect Username and/or Password!');
